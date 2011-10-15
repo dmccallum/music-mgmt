@@ -1,0 +1,5 @@
+Simple rake-based music encoding and relocation scripts. Assumes WAVs and FLACs have already been generated. Then just:
+
+  %> rake all
+
+Obviously the default config is env-specific.

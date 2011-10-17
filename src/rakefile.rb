@@ -11,7 +11,7 @@ task :all => [:encode_mp3s,:copy_mp3s,:copy_flacs,:safe_rm_mp3s,:safe_rm_flacs,:
 task :no_rm => [:encode_mp3s,:copy_mp3s,:copy_flacs]
 task :cp => [:copy_mp3s,:copy_flacs]
 task :cp_and_rm => [:copy_mp3s,:copy_flacs,:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
-task :rm => []:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
+task :rm => [:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
 
 task :encode_mp3s do |t|
   puts "Encoding mp3s..."

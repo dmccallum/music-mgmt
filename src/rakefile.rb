@@ -88,7 +88,7 @@ end
 
 def dir_and_track_file_for(file, ext, dest, dest_ext)
   track_info = track_info_for(file, ext)
-  album_dir = "#{dest}/#{track_info[:artist]}/#{track_info[:album]}"
+  album_dir = "#{dest}/#{track_info[:album_artist]}/#{track_info[:album]}"
   track_file = "#{track_info[:track]} - #{track_info[:artist]} - #{track_info[:song]}#{dest_ext}"
   { :album_dir => album_dir, :track_file => track_file, :path => "#{album_dir}/#{track_file}" }  
 end
@@ -97,7 +97,7 @@ def encode_mp3(in_wav)
   in_wav = File.expand_path(in_wav)
   out_mp3 = in_wav.gsub(/\.wav$/, ".mp3")
   track_info = track_info_for(in_wav, ".wav")
-  cmd = "lame --quiet -h --vbr-old -V 4 --tt '#{track_info[:song]}' --ta '#{track_info[:artist]}' --tl '#{track_info[:album]}' --ty '#{track_info[:year]}' --tn '#{track_info[:track]}' --tv 'album artist=#{track_info[:album_artist]}' '#{in_wav}' '#{out_mp3}'"
+  cmd = "lame --quiet -h --vbr-old -V 4 --tt '#{track_info[:song]}' --ta '#{track_info[:artist]}' --tl '#{track_info[:album]}' --ty '#{track_info[:year]}' --tn '#{track_info[:track]}' --tv 'TPE2=#{track_info[:album_artist]}' '#{in_wav}' '#{out_mp3}'"
   puts "Encoding... #{track_info[:artist]} - #{track_info[:song]}"
   $encoded_cnt += 1
   system cmd
@@ -110,7 +110,7 @@ def track_info_for(track, ext)
   dir_parts = dir.split("__-__")
   file_parts = file.split("__-__")
   info = { :artist => file_parts[1].gsub("_", " "),
-         :album_artist => dir_parts[0].gsub("_", " "),
+         :album_artist => File.basename(dir_parts[0]).gsub("_", " "),
          :album => dir_parts[1].gsub("_", " "),
          :year => dir_parts[2],
          :track => file_parts[0],

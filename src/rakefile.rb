@@ -14,50 +14,61 @@ task :cp_and_rm => [:copy_mp3s,:copy_flacs,:safe_rm_mp3s,:safe_rm_flacs,:safe_rm
 task :rm => [:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
 
 task :encode_mp3s do |t|
-  puts "Encoding mp3s..."
-  with_each_src_file ".wav" do |f|
-    mp3 = encode_mp3 f
+  log "Encoding mp3s..."
+  elapsed_secs = time do
+    with_each_src_file ".wav" do |f, idx, of|
+      mp3 = encode_mp3 f, idx, of
+    end
   end
-  puts "Encoded #{$encoded_cnt} tracks."
+  log "Encoded #{$encoded_cnt} tracks in #{format_secs(elapsed_secs)}"
 end
 
 task :copy_mp3s do |t|
-  puts "Copying mp3s..."
-  cp_tracks_by_ext ".mp3", MP3_DEST_BASE
-  puts "Copied #{$cp_cnts['.mp3']} mp3s."
+  log "Copying mp3s..."
+  elapsed_secs = time do
+    cp_tracks_by_ext ".mp3", MP3_DEST_BASE
+  end
+  log "Copied #{$cp_cnts['.mp3']} mp3s in #{format_secs(elapsed_secs)}"
 end
 
 task :copy_flacs do |t|
-  puts "Copying flacs..."
-  cp_tracks_by_ext ".flac", FLAC_DEST_BASE
-  puts "Copied #{$cp_cnts['.flac']} flacs."
+  log "Copying flacs..."
+  elapsed_secs = time do
+    cp_tracks_by_ext ".flac", FLAC_DEST_BASE
+  end
+  log "Copied #{$cp_cnts['.flac']} flacs in #{format_secs(elapsed_secs)}"
 end
 
 task :safe_rm_mp3s do |t|
-  puts "Cleaning up mp3s..."
+  log "Cleaning up mp3s..."
   rm_by_ext ".mp3", if_dest_track_exists(MP3_DEST_BASE, ".mp3")
-  puts "WARNING: Skipped cleanup of #{$rm_skips['.mp3'].size} mp3s... #{$rm_skips['.mp3']}"  unless $rm_skips['.mp3'] == nil
+  log "WARNING: Skipped cleanup of #{$rm_skips['.mp3'].size} mp3s... #{$rm_skips['.mp3']}"  unless $rm_skips['.mp3'] == nil
 end
 
 task :safe_rm_flacs do |t|
-  puts "Cleaning up flacs..."
+  log "Cleaning up flacs..."
   rm_by_ext ".flac", if_dest_track_exists(FLAC_DEST_BASE, ".flac")
-  puts "WARNING: Skipped cleanup of #{$rm_skips['.flac'].size} flacs... #{$rm_skips['.flac']}" unless $rm_skips['.flac'] == nil
+  log "WARNING: Skipped cleanup of #{$rm_skips['.flac'].size} flacs... #{$rm_skips['.flac']}" unless $rm_skips['.flac'] == nil
 end
 
 task :safe_rm_wavs do |t|
-  puts "Cleaning up wavs..."
+  log "Cleaning up wavs..."
   rm_by_ext ".wav", if_dest_track_exists(FLAC_DEST_BASE, ".flac")
-  puts "WARNING: Skipped cleanup of #{$rm_skips['.wav'].size} wavs... #{$rm_skips['.wav']}" unless $rm_skips['.wav'] == nil
+  log "WARNING: Skipped cleanup of #{$rm_skips['.wav'].size} wavs... #{$rm_skips['.wav']}" unless $rm_skips['.wav'] == nil
 end
 
 def with_each_src_file(ext, &action)
-  FileList["#{SRC_BASE}/**/*#{ext}"].each &action
+  file_list = FileList["#{SRC_BASE}/**/*#{ext}"]
+  idx = 0
+  file_list.each do |f|
+    action.call(f, idx+=1, file_list.length)
+  end
 end
 
 def rm_by_ext(ext, predicate=nil)
-  with_each_src_file ext do |f|
+  with_each_src_file ext do |f, idx, of|
     if predicate == nil || predicate.call(f,ext) then
+      log "Removing #{File.basename(f)}. #{idx} of #{of}."
       FileUtils.rm f
     else
       if $rm_skips[ext] == nil then
@@ -77,11 +88,15 @@ def if_dest_track_exists(dest_base, dest_ext)
 end
 
 def cp_tracks_by_ext(ext, dest)
-  with_each_src_file ext do |f|
+  with_each_src_file ext do |f, idx, of|
     dir_and_file = dir_and_track_file_for(f, ext, dest, ext)
     dir = dir_and_file[:album_dir]
     FileUtils.mkdir_p dir unless File.exists? dir
-    FileUtils.cp f, "#{dir_and_file[:path]}"
+    log_partial "Copying #{File.basename(f)} (#{idx} of #{of})... "
+    elapsed_secs = time do
+      FileUtils.cp f, "#{dir_and_file[:path]}"
+    end
+    log_append_and_eol format_secs(elapsed_secs)
     $cp_cnts[ext] = $cp_cnts[ext] == nil ? 1 : $cp_cnts[ext] + 1
   end
 end
@@ -93,14 +108,17 @@ def dir_and_track_file_for(file, ext, dest, dest_ext)
   { :album_dir => album_dir, :track_file => track_file, :path => "#{album_dir}/#{track_file}" }  
 end
 
-def encode_mp3(in_wav)
+def encode_mp3(in_wav, idx, of)
   in_wav = File.expand_path(in_wav)
   out_mp3 = in_wav.gsub(/\.wav$/, ".mp3")
   track_info = track_info_for(in_wav, ".wav")
   cmd = "lame --quiet -h --vbr-old -V 4 --tt '#{track_info[:song]}' --ta '#{track_info[:artist]}' --tl '#{track_info[:album]}' --ty '#{track_info[:year]}' --tn '#{track_info[:track]}' --tv 'TPE2=#{track_info[:album_artist]}' '#{in_wav}' '#{out_mp3}'"
-  puts "Encoding... #{track_info[:artist]} - #{track_info[:song]}"
+  log_partial "Encoding #{track_info[:artist]} - #{track_info[:song]} (#{idx} of #{of})... "
   $encoded_cnt += 1
-  system cmd
+  elapsed_secs = time do
+    system cmd
+  end
+  log_append_and_eol "#{format_secs(elapsed_secs)}"
   out_mp3
 end
 
@@ -116,4 +134,41 @@ def track_info_for(track, ext)
          :track => file_parts[0],
          :song => file_parts[2].gsub("_", " ") }
   info
+end
+
+def time
+  start = Time.new
+  yield
+  stop = Time.new
+  stop - start
+end
+
+def format_secs(elapsed_secs)
+  days,secs = elapsed_secs.divmod(60*60*24)
+  hours,secs = elapsed_secs.divmod(60*60)
+  mins,secs = elapsed_secs.divmod(60)
+  msecs = (elapsed_secs - elapsed_secs.truncate) * 1000
+  rtn = ""
+  rtn << "#{days}d " unless days == 0
+  rtn << "#{hours}h " unless hours == 0
+  rtn << "#{mins}m " unless mins == 0
+  rtn << "#{secs.floor}s " unless secs.floor == 0
+  rtn << "#{msecs.round}ms"
+  rtn.strip
+end
+
+def log_partial(msg)
+  print "#{format_ts_for_log} #{msg}"
+end
+
+def log_append_and_eol(msg)
+  puts msg
+end
+
+def log(msg)
+  puts "#{format_ts_for_log} #{msg}"
+end
+
+def format_ts_for_log
+  "#{Time.new.strftime('%Y-%m-%d %H:%M:%S.%L')}"
 end

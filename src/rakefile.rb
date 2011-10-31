@@ -1,4 +1,5 @@
-SRC_BASE = ENV["SRC_BASE"] || "/home/dmccallum/Music"
+ORIG_SRC_BASE = ENV["ORIG_SRC_BASE"] || "/home/dmccallum/Music"
+SRC_BASE = ENV["SRC_BASE"] || "/home/dmccallum/Music_Work"
 DEST_BASE = ENV["DEST_BASE"] || "/home/dmccallum/drobo"
 FLAC_DEST_BASE = ENV["FLAC_DEST_BASE"] || "#{DEST_BASE}/Music_Lossless"
 MP3_DEST_BASE = ENV["MP3_DEST_BASE"] || "#{DEST_BASE}/Music_Lossy"
@@ -7,11 +8,31 @@ $encoded_cnt = 0
 $cp_cnts = {}
 $rm_skips = {}
 
-task :all => [:encode_mp3s,:copy_mp3s,:copy_flacs,:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
-task :no_rm => [:encode_mp3s,:copy_mp3s,:copy_flacs]
+task :all => [:init_src,:encode_mp3s,:copy_mp3s,:copy_flacs,:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
+task :no_rm => [:init_src,:encode_mp3s,:copy_mp3s,:copy_flacs]
 task :cp => [:copy_mp3s,:copy_flacs]
 task :cp_and_rm => [:copy_mp3s,:copy_flacs,:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
 task :rm => [:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
+
+#task :multiall do |t|
+#  puts DirList["#{DEST_BASE}}/**"]
+#end
+
+#task :spawn do |t|
+#  Process.spawn ("rake hw[Cruel]")
+#  Process.spawn ("rake hw[Nice-ish\\ World]")
+#  Process.spawn ("rake hw[World]")
+#  Process.waitall
+#end
+
+#task :hw, [:msg] do |t,args|
+#  puts "Hello, #{args.msg}"
+#end
+
+task :init_src do |t|
+  FileUtils.mkdir_p SRC_BASE unless File.exists? SRC_BASE
+  FileUtils.mv Dir.glob("#{ORIG_SRC_BASE}/*"), "#{SRC_BASE}" unless !(File.exists? ORIG_SRC_BASE) || ORIG_SRC_BASE == SRC_BASE
+end
 
 task :encode_mp3s do |t|
   log "Encoding mp3s..."

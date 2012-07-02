@@ -26,8 +26,17 @@ task :rm => [:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
 #end
 
 #task :hw, [:msg] do |t,args|
-#  puts "Hello, #{args.msg}"
+#  puts "Hello, #{args.msg[0,2].to_i + 20}"
 #end
+
+task :offset_tracks, [:in_dir, :offset] do |t,args|
+  FileList["#{args.in_dir}/**"].each do |f|
+    file_name = File.basename(f)
+    offset_file_name = "%02d" % (file_name[0,2].to_i + args.offset.to_i) + file_name[2, file_name.length]
+    puts "Renaming #{f} to #{File.dirname(f)}/#{offset_file_name}"
+    FileUtils.mv f, "#{File.dirname(f)}/#{offset_file_name}"
+  end
+end
 
 task :init_src do |t|
   FileUtils.mkdir_p SRC_BASE unless File.exists? SRC_BASE
@@ -89,7 +98,7 @@ end
 def rm_by_ext(ext, predicate=nil)
   with_each_src_file ext do |f, idx, of|
     if predicate == nil || predicate.call(f,ext) then
-      log "Removing #{File.basename(f)}. #{idx} of #{of}."
+      #log "Removing #{File.basename(f)}. #{idx} of #{of}."
       FileUtils.rm f
     else
       if $rm_skips[ext] == nil then

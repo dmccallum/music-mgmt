@@ -25,9 +25,11 @@ task :rm => [:safe_rm_mp3s,:safe_rm_flacs,:safe_rm_wavs]
 #  Process.waitall
 #end
 
-#task :hw, [:msg] do |t,args|
-#  puts "Hello, #{args.msg[0,2].to_i + 20}"
-#end
+task :processing_order do |t,args|
+  with_each_src_file ".wav" do |f, idx, of|
+    puts f
+  end
+end
 
 task :offset_tracks, [:in_dir, :offset] do |t,args|
   FileList["#{args.in_dir}/**"].each do |f|
